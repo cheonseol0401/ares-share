@@ -1,0 +1,463 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<meta name="referrer" content="no-referrer">
+<meta name="theme-color" content="#05080d">
+<meta property="og:title" content="ARES · 공유된 일정">
+<meta property="og:description" content="링크를 열면 일정을 바로 볼 수 있어요">
+<title>ARES · 공유된 일정</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<style>
+  :root {
+    --bg: #05080d;
+    --panel: rgba(0, 229, 255, 0.045);
+    --line: rgba(0, 229, 255, 0.22);
+    --cyan: #00e5ff;
+    --text: #e6fbff;
+    --dim: rgba(0, 229, 255, 0.62);
+    --faint: rgba(0, 229, 255, 0.4);
+    --amber: #ffb547;
+    --now: #ff9f43;
+    --red: #ff6b81;
+    --blue: #7fb2ff;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--bg); color: var(--text); }
+  body {
+    font-family: Pretendard, -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", sans-serif;
+    -webkit-font-smoothing: antialiased;
+    min-height: 100vh;
+    background:
+      radial-gradient(1200px 500px at 50% -200px, rgba(0, 229, 255, 0.12), transparent 70%),
+      var(--bg);
+  }
+  .wrap { max-width: 680px; margin: 0 auto; padding: max(20px, env(safe-area-inset-top)) 16px 48px; }
+
+  /* 머리 */
+  .brand { display: flex; align-items: center; gap: 10px; }
+  .logo {
+    font-weight: 800; letter-spacing: 6px; color: var(--cyan); font-size: 15px;
+    text-shadow: 0 0 12px rgba(0, 229, 255, 0.7);
+  }
+  .tag { font-size: 11px; color: var(--dim); border: 1px solid var(--line); border-radius: 10px; padding: 2px 8px; }
+  h1 { margin: 18px 0 4px; font-size: 24px; line-height: 1.3; font-weight: 800; color: #fff; word-break: keep-all; }
+  .range { color: var(--dim); font-size: 14px; }
+  .live { display: inline-flex; align-items: center; gap: 6px; margin-top: 10px; font-size: 12px; color: var(--faint); }
+  .live .pulse { width: 7px; height: 7px; border-radius: 50%; background: #3ddc84; box-shadow: 0 0 8px #3ddc84; animation: pulse 2s infinite; }
+  @keyframes pulse { 50% { opacity: 0.35; } }
+  @media (prefers-reduced-motion: reduce) { .live .pulse { animation: none; } }
+
+  /* 하루 묶음 */
+  .day { margin-top: 18px; border: 1px solid var(--line); border-radius: 18px; background: var(--panel); overflow: hidden; }
+  .day.today { border-color: rgba(0, 229, 255, 0.7); box-shadow: 0 0 18px rgba(0, 229, 255, 0.12); }
+  .day-head { display: flex; align-items: baseline; gap: 8px; padding: 12px 16px 8px; border-bottom: 1px solid rgba(0, 229, 255, 0.1); }
+  .day-date { font-size: 16px; font-weight: 700; color: #fff; }
+  .day-date.sun, .day-date.holiday { color: var(--red); }
+  .day-date.sat { color: var(--blue); }
+  .holiday-name { font-size: 12px; color: var(--red); font-weight: 700; }
+  .badge-today { margin-left: auto; font-size: 11px; font-weight: 800; color: #05080d; background: var(--cyan); border-radius: 8px; padding: 2px 8px; }
+  .count { margin-left: auto; font-size: 12px; color: var(--faint); }
+  .badge-today + .count { margin-left: 6px; }
+  .empty { padding: 12px 16px 14px; color: var(--faint); font-size: 13px; }
+
+  .item { display: flex; gap: 12px; padding: 12px 16px; border-top: 1px solid rgba(0, 229, 255, 0.06); }
+  .item:first-of-type { border-top: 0; }
+  .t { width: 54px; flex: none; }
+  .t .s { color: var(--cyan); font-weight: 700; font-size: 15px; font-variant-numeric: tabular-nums; }
+  .t .e { color: var(--faint); font-size: 12px; margin-top: 2px; font-variant-numeric: tabular-nums; }
+  .t .s.allday { font-size: 13px; }
+  .bar { width: 4px; flex: none; border-radius: 2px; }
+  .body { flex: 1; min-width: 0; }
+  .title { font-size: 16px; font-weight: 600; color: #fff; word-break: break-word; }
+  .title .star { color: var(--amber); margin-right: 4px; }
+  .item.done .title { color: var(--faint); text-decoration: line-through; }
+  .item.done .t .s { color: var(--faint); }
+  .meta { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; align-items: center; }
+  .chip { font-size: 11px; font-weight: 700; border: 1px solid; border-radius: 8px; padding: 1px 7px; }
+  .done-mark { font-size: 11px; color: #3ddc84; font-weight: 700; }
+  .loc { font-size: 12px; color: var(--dim); text-decoration: none; }
+  .loc:hover { text-decoration: underline; }
+  .memo { margin-top: 6px; font-size: 13px; color: rgba(230, 251, 255, 0.72); white-space: pre-wrap; word-break: break-word; line-height: 1.5; }
+  .now { display: flex; align-items: center; gap: 8px; padding: 6px 16px; color: var(--now); font-size: 12px; font-weight: 700; }
+  .now::after { content: ""; flex: 1; height: 1.5px; background: rgba(255, 159, 67, 0.55); }
+  .now .ndot { width: 8px; height: 8px; border-radius: 50%; background: var(--now); }
+
+  /* 달력 (월간) */
+  .cal { margin-top: 18px; border: 1px solid var(--line); border-radius: 18px; background: var(--panel); padding: 10px; }
+  .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; }
+  .cal-wd { text-align: center; font-size: 11px; color: var(--dim); padding: 4px 0 8px; }
+  .cal-wd.sun { color: var(--red); } .cal-wd.sat { color: var(--blue); }
+  .cell { position: relative; aspect-ratio: 1 / 1.05; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; padding-top: 6px; border-radius: 12px; background: none; border: 0; color: var(--text); font: inherit; cursor: pointer; }
+  .cell:disabled { cursor: default; }
+  .cell .n { font-size: 14px; font-variant-numeric: tabular-nums; }
+  .cell.has { background: rgba(0, 229, 255, 0.1); }
+  .cell.has .n { font-weight: 700; color: #fff; }
+  .cell.sun .n, .cell.holiday .n { color: var(--red); }
+  .cell.sat .n { color: var(--blue); }
+  .cell.today { outline: 1.5px solid var(--cyan); background: rgba(0, 229, 255, 0.2); }
+  .cell .dots { display: flex; gap: 2px; margin-top: 4px; height: 5px; }
+  .cell .dots i { width: 5px; height: 5px; border-radius: 50%; display: block; }
+  .cell .hn { font-size: 9px; color: var(--red); margin-top: 2px; max-width: 100%; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+
+  /* 안내 · 오류 */
+  .foot { margin-top: 28px; text-align: center; color: var(--faint); font-size: 12px; line-height: 1.7; }
+  .state { text-align: center; padding: 80px 20px; }
+  .state .icon { font-size: 44px; }
+  .state h2 { color: #fff; font-size: 20px; margin: 14px 0 6px; }
+  .state p { color: var(--dim); font-size: 14px; margin: 0; line-height: 1.6; word-break: keep-all; }
+  .retry { margin-top: 18px; background: var(--cyan); color: #05080d; border: 0; border-radius: 20px; padding: 10px 22px; font: inherit; font-weight: 700; cursor: pointer; }
+  .loading { color: var(--dim); text-align: center; padding: 80px 0; }
+</style>
+</head>
+<body>
+<div class="wrap" id="app"><div class="loading">일정을 불러오는 중…</div></div>
+
+<script>
+// ============================================================
+// ▼ 앱의 src/lib/supabase.ts 에 넣은 값과 똑같이 넣어 주세요
+//   (publishable 키는 공개돼도 괜찮은 키예요. secret 키는 절대 넣지 마세요)
+// ============================================================
+const SUPABASE_URL = 'https://bdtqvtzlfgyxiblxalvr.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_iC90myY9Ma8CDiLyxOCn2Q_k9eCxwJq';
+// ============================================================
+
+const REFRESH_MS = 60000;
+const WEEK = ['일', '월', '화', '수', '목', '금', '토'];
+const app = document.getElementById('app');
+const token = new URLSearchParams(location.search).get('s') || (location.hash.match(/s=([\w-]+)/) || [])[1] || '';
+let data = null;
+let loadedAt = null;
+let timer = null;
+
+// ---------- 날짜 ----------
+const pad = (n) => (n < 10 ? '0' + n : '' + n);
+const keyOf = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+const parse = (k) => { const [y, m, d] = k.split('-').map(Number); return new Date(y, m - 1, d); };
+const shift = (k, n) => { const d = parse(k); d.setDate(d.getDate() + n); return keyOf(d); };
+const weekday = (k) => parse(k).getDay();
+const label = (k) => `${Number(k.slice(5, 7))}월 ${Number(k.slice(8))}일 (${WEEK[weekday(k)]})`;
+const todayKey = () => keyOf(new Date());
+
+// ---------- 공휴일 (앱의 holidays.ts와 같은 규칙) ----------
+const LUNAR = {
+  2025: { seollal: '01-29', buddha: '05-05', chuseok: '10-06' },
+  2026: { seollal: '02-17', buddha: '05-24', chuseok: '09-25' },
+  2027: { seollal: '02-07', buddha: '05-13', chuseok: '09-15' },
+};
+const SPECIAL = { '2025-01-27': '임시공휴일', '2025-06-03': '대통령 선거일', '2026-06-03': '전국동시지방선거' };
+const holidayCache = {};
+function holidayYear(y) {
+  if (holidayCache[y]) return holidayCache[y];
+  const base = [];
+  const add = (md, name, rule, groupEnd) => base.push({ date: `${y}-${md}`, name, rule, groupEnd });
+  add('01-01', '신정', 'none');
+  add('03-01', '삼일절', y >= 2021 ? 'weekend' : 'none');
+  if (y >= 2026) add('05-01', '노동절', 'weekend');
+  add('05-05', '어린이날', y >= 2014 ? 'weekend' : 'none');
+  add('06-06', '현충일', 'none');
+  if (y >= 2026) add('07-17', '제헌절', 'weekend');
+  add('08-15', '광복절', y >= 2021 ? 'weekend' : 'none');
+  add('10-03', '개천절', y >= 2021 ? 'weekend' : 'none');
+  add('10-09', '한글날', y >= 2021 ? 'weekend' : 'none');
+  add('12-25', '기독탄신일', y >= 2023 ? 'weekend' : 'none');
+  const L = LUNAR[y];
+  if (L) {
+    add(L.buddha, '부처님오신날', y >= 2023 ? 'weekend' : 'none');
+    for (const [md, name] of [[L.seollal, '설날'], [L.chuseok, '추석']]) {
+      const mid = `${y}-${md}`;
+      const end = shift(mid, 1);
+      base.push({ date: shift(mid, -1), name: `${name} 연휴`, rule: 'lunar', groupEnd: end });
+      base.push({ date: mid, name, rule: 'lunar', groupEnd: end });
+      base.push({ date: end, name: `${name} 연휴`, rule: 'lunar', groupEnd: end });
+    }
+  }
+  for (const [k, name] of Object.entries(SPECIAL)) if (k.startsWith(`${y}-`)) base.push({ date: k, name, rule: 'none' });
+  const out = {};
+  for (const b of base) (out[b.date] = out[b.date] || []).push(b.name);
+  const isOff = (k) => !!out[k] || weekday(k) === 0;
+  const nextFree = (after) => { let k = shift(after, 1); while (isOff(k) || weekday(k) === 6) k = shift(k, 1); return k; };
+  for (const date of [...new Set(base.map((b) => b.date))].sort()) {
+    const here = base.filter((b) => b.date === date);
+    const wd = weekday(date);
+    const sat = wd === 6, sun = wd === 0;
+    let count = 0, after = date;
+    for (const b of here) {
+      if (b.rule === 'weekend' && (sat || sun)) count++;
+      if (b.rule === 'lunar' && sun) count++;
+      if (b.rule === 'lunar' && b.groupEnd > after) after = b.groupEnd;
+    }
+    const ruled = here.some((b) => b.rule !== 'none');
+    if (here.length > 1 && !sat && !sun && ruled) count = Math.max(count, here.length - 1);
+    if (here.length > 1 && (sat || sun) && count === 0 && ruled) count = 1;
+    for (let i = 0; i < count; i++) { const sub = nextFree(after); (out[sub] = out[sub] || []).push('대체공휴일'); after = sub; }
+  }
+  return (holidayCache[y] = out);
+}
+const holidayOf = (k) => { const list = holidayYear(Number(k.slice(0, 4)))[k]; return list ? list.join(' · ') : ''; };
+
+// ---------- 반복 일정 펼치기 (앱의 occursOn과 같은 규칙) ----------
+function norm(it) {
+  return {
+    ...it,
+    date: String(it.date || '').slice(0, 10),
+    time: String(it.time || '').slice(0, 5),
+    end_time: String(it.end_time || '').slice(0, 5),
+    repeat_until: String(it.repeat_until || '').slice(0, 10),
+    repeat_days: Array.isArray(it.repeat_days) ? it.repeat_days.map(Number) : [],
+    done_dates: Array.isArray(it.done_dates) ? it.done_dates : [],
+    skip_dates: Array.isArray(it.skip_dates) ? it.skip_dates : [],
+  };
+}
+function occursOn(it, key) {
+  if (it.repeat === 'none' || !it.repeat) return it.date === key;
+  if (key < it.date) return false;
+  if (it.repeat_until && key > it.repeat_until) return false;
+  if (it.skip_dates.includes(key)) return false;
+  const [, m, d] = key.split('-').map(Number);
+  const [, sm, sd] = it.date.split('-').map(Number);
+  if (it.repeat === 'daily') return true;
+  if (it.repeat === 'weekly') {
+    const days = it.repeat_days.length ? it.repeat_days : [weekday(it.date)];
+    return days.includes(weekday(key));
+  }
+  if (it.repeat === 'monthly') return d === sd;
+  if (it.repeat === 'yearly') return m === sm && d === sd;
+  return false;
+}
+const isDone = (it, key) => (it.repeat === 'none' ? !!it.done : it.done_dates.includes(key));
+function itemsOn(key) {
+  return data.items
+    .filter((it) => occursOn(it, key))
+    .map((it) => ({ ...it, on: key, isDone: isDone(it, key) }))
+    .sort((a, b) => (a.time === b.time ? 0 : !a.time ? -1 : !b.time ? 1 : a.time < b.time ? -1 : 1));
+}
+
+// ---------- 화면 만들기 (글자는 모두 textContent로 넣어요) ----------
+function el(tag, cls, text) {
+  const e = document.createElement(tag);
+  if (cls) e.className = cls;
+  if (text !== undefined && text !== null) e.textContent = text;
+  return e;
+}
+function catOf(id) {
+  const c = (data.categories || []).find((x) => x.id === id);
+  return c || { id: 'none', name: '', color: '#00e5ff' };
+}
+
+function itemRow(it) {
+  const row = el('div', 'item' + (it.isDone ? ' done' : ''));
+  const t = el('div', 't');
+  if (it.time) {
+    t.append(el('div', 's', it.time));
+    if (it.end_time) t.append(el('div', 'e', '~' + it.end_time));
+  } else {
+    t.append(el('div', 's allday', '종일'));
+  }
+  const cat = catOf(it.category);
+  const bar = el('div', 'bar');
+  bar.style.background = cat.color;
+  const body = el('div', 'body');
+  const title = el('div', 'title');
+  if (it.important) title.append(el('span', 'star', '★'));
+  title.append(document.createTextNode(it.title));
+  body.append(title);
+  const meta = el('div', 'meta');
+  if (cat.name && it.category !== 'none') {
+    const chip = el('span', 'chip', cat.name);
+    chip.style.color = cat.color;
+    chip.style.borderColor = cat.color;
+    meta.append(chip);
+  }
+  if (it.isDone) meta.append(el('span', 'done-mark', '✓ 완료'));
+  if (it.location) {
+    const a = el('a', 'loc', '📍 ' + it.location);
+    a.href = 'https://map.naver.com/p/search/' + encodeURIComponent(it.location);
+    a.target = '_blank';
+    a.rel = 'noopener noreferrer';
+    meta.append(a);
+  }
+  if (meta.childNodes.length) body.append(meta);
+  if (it.memo) body.append(el('div', 'memo', it.memo));
+  row.append(t, bar, body);
+  return row;
+}
+
+function dayBlock(key, opts) {
+  const list = itemsOn(key);
+  const today = key === todayKey();
+  const box = el('section', 'day' + (today ? ' today' : ''));
+  box.id = 'd-' + key;
+  const head = el('div', 'day-head');
+  const hol = holidayOf(key);
+  const wd = weekday(key);
+  head.append(el('span', 'day-date' + (hol ? ' holiday' : wd === 0 ? ' sun' : wd === 6 ? ' sat' : ''), label(key)));
+  if (hol) head.append(el('span', 'holiday-name', hol));
+  if (today) head.append(el('span', 'badge-today', '오늘'));
+  if (list.length) head.append(el('span', 'count', list.length + '개'));
+  box.append(head);
+  if (!list.length) {
+    box.append(el('div', 'empty', opts && opts.big ? '이 날은 일정이 없어요' : '일정 없음'));
+    return box;
+  }
+  const now = new Date();
+  const nowHM = pad(now.getHours()) + ':' + pad(now.getMinutes());
+  let nowPlaced = !today || !list.some((it) => it.time);
+  const nowLine = () => {
+    const n = el('div', 'now');
+    n.append(el('span', 'ndot'), document.createTextNode('지금 ' + nowHM));
+    box.append(n);
+    nowPlaced = true;
+  };
+  for (const it of list) {
+    if (!nowPlaced && it.time && it.time > nowHM) nowLine();
+    box.append(itemRow(it));
+  }
+  if (!nowPlaced) nowLine(); // 오늘 일정이 다 지났으면 맨 아래에
+  return box;
+}
+
+function monthCalendar(start, end) {
+  const box = el('div', 'cal');
+  const grid = el('div', 'cal-grid');
+  WEEK.forEach((w, i) => grid.append(el('div', 'cal-wd' + (i === 0 ? ' sun' : i === 6 ? ' sat' : ''), w)));
+  for (let i = 0; i < weekday(start); i++) grid.append(el('div'));
+  const today = todayKey();
+  for (let k = start; k <= end; k = shift(k, 1)) {
+    const list = itemsOn(k);
+    const hol = holidayOf(k);
+    const wd = weekday(k);
+    const cell = el('button', 'cell' + (list.length ? ' has' : '') + (hol ? ' holiday' : wd === 0 ? ' sun' : wd === 6 ? ' sat' : '') + (k === today ? ' today' : ''));
+    cell.type = 'button';
+    cell.append(el('span', 'n', String(Number(k.slice(8)))));
+    const dots = el('span', 'dots');
+    [...new Set(list.map((it) => it.category))].slice(0, 3).forEach((c) => {
+      const i = el('i');
+      i.style.background = catOf(c).color;
+      dots.append(i);
+    });
+    cell.append(dots);
+    if (hol) cell.append(el('span', 'hn', hol.replace('대체공휴일', '대체')));
+    if (list.length) {
+      const key = k;
+      cell.addEventListener('click', () => {
+        const target = document.getElementById('d-' + key);
+        if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
+    } else {
+      cell.disabled = true;
+    }
+    grid.append(cell);
+  }
+  box.append(grid);
+  return box;
+}
+
+function render() {
+  const frag = document.createDocumentFragment();
+  const head = el('header');
+  const brand = el('div', 'brand');
+  brand.append(el('span', 'logo', 'ARES'), el('span', 'tag', '공유된 일정'));
+  head.append(brand);
+  head.append(el('h1', null, data.title || '일정'));
+  const range = data.kind === 'day' ? label(data.start)
+    : data.kind === 'month' ? `${data.start.slice(0, 4)}년 ${Number(data.start.slice(5, 7))}월`
+    : `${label(data.start)} ~ ${label(data.end)}`;
+  head.append(el('div', 'range', range));
+  const live = el('div', 'live');
+  live.append(el('span', 'pulse'), document.createTextNode(`실시간 · ${pad(loadedAt.getHours())}:${pad(loadedAt.getMinutes())} 업데이트`));
+  head.append(live);
+  frag.append(head);
+
+  if (data.kind === 'day') {
+    frag.append(dayBlock(data.start, { big: true }));
+  } else if (data.kind === 'week') {
+    for (let k = data.start; k <= data.end; k = shift(k, 1)) frag.append(dayBlock(k));
+  } else {
+    frag.append(monthCalendar(data.start, data.end));
+    let any = false;
+    for (let k = data.start; k <= data.end; k = shift(k, 1)) {
+      if (itemsOn(k).length || k === todayKey()) { frag.append(dayBlock(k)); any = true; }
+    }
+    if (!any) frag.append(el('div', 'empty', '이 달은 일정이 없어요'));
+  }
+
+  const foot = el('div', 'foot');
+  foot.append(document.createTextNode('보내는 사람이 일정을 고치면 이 화면도 자동으로 바뀌어요'));
+  if (data.expires_at) {
+    const d = new Date(data.expires_at);
+    foot.append(el('br'), document.createTextNode(`이 링크는 ${d.getMonth() + 1}월 ${d.getDate()}일까지 열려요`));
+  }
+  foot.append(el('br'), document.createTextNode('ARES'));
+  frag.append(foot);
+
+  const y = window.scrollY;
+  app.replaceChildren(frag);
+  window.scrollTo(0, y);
+}
+
+function showState(icon, title, text, retry) {
+  const box = el('div', 'state');
+  box.append(el('div', 'icon', icon), el('h2', null, title), el('p', null, text));
+  if (retry) {
+    const b = el('button', 'retry', '다시 시도');
+    b.addEventListener('click', () => { app.replaceChildren(el('div', 'loading', '일정을 불러오는 중…')); load(); });
+    box.append(b);
+  }
+  app.replaceChildren(box);
+}
+
+async function load() {
+  if (SUPABASE_URL.includes('YOUR-PROJECT') || SUPABASE_KEY.includes('YOUR_')) {
+    showState('🛠', '페이지 설정이 아직 안 됐어요', 'index.html 위쪽의 SUPABASE_URL과 SUPABASE_KEY를 넣어 주세요');
+    return;
+  }
+  if (!token) {
+    showState('🔗', '링크가 올바르지 않아요', '받은 링크를 끝까지 복사했는지 확인해 주세요');
+    return;
+  }
+  try {
+    // publishable 키는 apikey 헤더로 보내요 (예전 anon 키(eyJ…)면 Authorization도 같이)
+    const headers = { apikey: SUPABASE_KEY, 'Content-Type': 'application/json' };
+    if (SUPABASE_KEY.startsWith('eyJ')) headers.Authorization = 'Bearer ' + SUPABASE_KEY;
+    const resp = await fetch(SUPABASE_URL.replace(/\/+$/, '') + '/rest/v1/rpc/get_schedule_share', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ p_token: token }),
+      cache: 'no-store',
+    });
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    const res = await resp.json();
+    if (!res || res.error === 'not_found') {
+      stop();
+      showState('🔒', '볼 수 없는 링크예요', '공유가 꺼졌거나 없는 링크예요. 보낸 사람에게 다시 물어봐 주세요');
+      return;
+    }
+    if (res.error === 'expired') {
+      stop();
+      showState('⏰', '공유 기간이 끝났어요', '보낸 사람에게 새 링크를 부탁해 주세요');
+      return;
+    }
+    data = { ...res, items: (res.items || []).map(norm) };
+    loadedAt = new Date();
+    document.title = `${data.title || '일정'} · ARES`;
+    render();
+  } catch (e) {
+    if (data) return; // 이미 보여주고 있으면 다음 새로고침 때 다시 해요
+    showState('📡', '일정을 불러오지 못했어요', '인터넷 연결을 확인하고 다시 시도해 주세요', true);
+  }
+}
+
+function stop() {
+  if (timer) clearInterval(timer);
+  timer = null;
+}
+
+load();
+timer = setInterval(load, REFRESH_MS);
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && timer) load(); });
+</script>
+</body>
+</html>
